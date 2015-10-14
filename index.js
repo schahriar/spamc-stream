@@ -33,16 +33,16 @@ var spamc = function (host, port, timeout) {
     var connTimoutSecs = (timeout == undefined) ? 10 : timeout;
     /*
      * Description: Sends a Ping to spamd and returns Pong on response
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.ping = function (onResponse) {
+    this.ping = function (callback) {
         exec('PING', null, function (data) {
             /* Check Response has the word PONG */
             if (data[0].indexOf('PONG') > 0) {
-                onResponse(true);
+                callback(null, true);
             } else {
-                onResponse(false);
+                callback(null, false);
             }
         });
         return self;
@@ -50,78 +50,72 @@ var spamc = function (host, port, timeout) {
     /*
      * Description: returns spam score
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.check = function (message, onResponse) {
+    this.check = function (message, callback) {
         exec('CHECK', message, function (data) {
-            var response = processResponse('CHECK', data);
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if (callback) callback.apply(this, processResponse('CHECK', data));
         });
         return self;
     };
     /*
      * Description: Returns Spam Score and Matches
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.symbols = function (message, onResponse) {
+    this.symbols = function (message, callback) {
         exec('SYMBOLS', message, function (data) {
-            var response = processResponse('SYMBOLS', data);
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if (callback) callback.apply(this, processResponse('SYMBOLS', data));
         });
         return self;
     };
     /*
      * Description: Returns an object report
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.report = function (message, onResponse) {
+    this.report = function (message, callback) {
         exec('REPORT', message, function (data) {
-            var response = processResponse('REPORT', data);
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if (callback) callback.apply(this, processResponse('REPORT', data));
         });
         return self;
     };
     /*
      * Description: Returns Object Report if is spam
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.reportIfSpam = function (message, onResponse) {
+    this.reportIfSpam = function (message, callback) {
         exec('REPORT_IFSPAM', message, function (data) {
-            var response = processResponse('REPORT_IFSPAM', data);
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if (callback) callback.apply(this, processResponse('REPORT_IFSPAM', data));
         });
         return self;
     };
     /*
      * Description: Returns back a report for the message + the message
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.process = function (message, onResponse) {
+    this.process = function (message, callback) {
         exec('PROCESS', message, function (data) {
-            var response = processResponse('PROCESS', data);
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if (callback) callback.apply(this, processResponse('PROCESS', data));
         });
         return self;
     };
     /*
      * Description: Returns headers for the message
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.headers = function (message, onResponse) {
+    this.headers = function (message, callback) {
         exec('HEADERS', message, function (data) {
-            var response = processResponse('HEADERS', data);
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if (callback) callback.apply(this, processResponse('HEADERS', data));
         });
         return self;
     };
@@ -130,10 +124,10 @@ var spamc = function (host, port, timeout) {
      * Description: Tell spamd to learn message is spam/ham or forget
      * Param: message {string}
      * Param: learnType {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.learn = function (message, learnType, onResponse) {
+    this.learn = function (message, learnType, callback) {
         var headers;
         switch (learnType.toUpperCase()) {
             case 'SPAM':
@@ -156,54 +150,53 @@ var spamc = function (host, port, timeout) {
                 ];
                 break;
             default:
-                throw new Error('Learn Type Not Found');
+                callback(new Error('Learn Type Not Found'));
         }
         exec('TELL', message, function (data) {
             var response = processResponse('HEADERS', data);
-            if (response.responseCode == 69) {
-                throw new Error('TELL commands are not enabled, set the --allow-tell switch.');
-            }
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if ((response) && (response[1].responseCode == 69)) {
+                if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
+            }else if (callback) callback.apply(this, response);
         }, headers);
         return self;
     };
     /*
      * Description: tell spamd message is not spam
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.revoke = function (message, onResponse) {
-        headers = [
+    this.revoke = function (message, callback) {
+        var headers = [
             { name: 'Message-class', 'value': 'ham' },
             { name: 'Set', 'value': 'local,remote' }
         ];
         exec('TELL', message, function (data) {
             var response = processResponse('HEADERS', data);
-            if (response.responseCode == 69) {
-                throw new Error('TELL commands are not enabled, set the --allow-tell switch.');
+            if ((response) && (response[1].responseCode == 69)) {
+                if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }
-            if (typeof (onResponse) == 'function') onResponse(response);
+            else if(callback) callback.apply(this, response);
         }, headers);
         return self;
     };
     /*
      * Description: Tell spamd message is spam
      * Param: message {string}
-     * Param: onResponse {function}
+     * Param: callback {function}
      * Returns: self
      */
-    this.tell = function (message, onResponse) {
-        headers = [
+    this.tell = function (message, callback) {
+        var headers = [
             { name: 'Message-class', 'value': 'spam' },
             { name: 'Set', 'value': 'local,remote' }
         ];
         exec('TELL', message, function (data) {
             var response = processResponse('HEADERS', data);
-            if (response.responseCode == 69) {
-                throw new Error('TELL commands are not enabled, set the --allow-tell switch.');
+            if ((response) && (response[1].responseCode == 69)) {
+                callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }
-            if (typeof (onResponse) == 'function') onResponse(response);
+            if(callback) callback.apply(this, response);
         }, headers);
         return self;
     };
@@ -213,11 +206,11 @@ var spamc = function (host, port, timeout) {
      * Param: message {string}
      * Param: onData {function(data)}
      */
-    var exec = function (cmd, message, onData, extraHeaders) {
+    var exec = function (cmd, message, extraHeaders, callback) {
         var responseData = [];
         var stream = net.createConnection(port, host);
         stream.setTimeout(connTimoutSecs * 1000, function () {
-            throw new Error('Connection to spamd Timed Out');
+            if(callback) callback(new Error('Connection to spamd Timed Out'));
         });
         stream.on('connect', function () {
             /* Create Command to Send to spamd */
@@ -236,7 +229,7 @@ var spamc = function (host, port, timeout) {
             stream.write(cmd + "\r\n");
         });
         stream.on('error', function (data) {
-            throw new Error('spamd returned a error: ' + data.toString());
+            if(callback) callback(Error('spamd returned a error: ' + data.toString()));
         });
         stream.on('data', function (data) {
             var data = data.toString();
@@ -249,20 +242,20 @@ var spamc = function (host, port, timeout) {
             }
         });
         stream.on('close', function () {
-            onData(responseData);
+            if(callback) callback(null, responseData);
         })
     };
     /*
      * Description: Processes Response from spamd and put into a formatted object
      * Param: cmd {string}
      * Param: lines {array[string]}
-     * Return: {object}
+     * Return: [{Error}, {Object} ]
      */
     var processResponse = function (cmd, lines) {
         var returnObj = {};
         var result = lines[0].match(patterns.responseHead);
         if (result == null) {
-            throw new Error('spamd unreconized response:' + lines[0]);
+            return [new Error('spamd unreconized response:' + lines[0])]
         }
         returnObj.responseCode = parseInt(result[2]);
         returnObj.responseMessage = result[3];
@@ -332,7 +325,7 @@ var spamc = function (host, port, timeout) {
             }
         }
 
-        return returnObj;
+        return [null, returnObj];
     };
 };
 
