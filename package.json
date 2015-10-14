@@ -29,5 +29,9 @@
   "bugs": {
     "url": "https://github.com/schahriar/spamc-stream/issues"
   },
-  "homepage": "https://github.com/schahriar/spamc-stream#readme"
+  "homepage": "https://github.com/schahriar/spamc-stream#readme",
+  "devDependencies": {
+    "chai": "^3.3.0",
+    "mocha": "^2.3.3"
+  }
 }
