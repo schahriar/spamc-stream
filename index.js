@@ -28,9 +28,25 @@ var patterns = {
 var spamc = function (host, port, timeout) {
     var self = this;
     var protocolVersion = 1.5;
-    var host = (host == undefined) ? '127.0.0.1' : host;
-    var port = (port == undefined) ? 783 : port;
+    host = (host == undefined) ? '127.0.0.1' : host;
+    port = (port == undefined) ? 783 : port;
     var connTimoutSecs = (timeout == undefined) ? 10 : timeout;
+    var MessageFactory = function MESSAGE_FACTORY(command) {
+        /*
+            Handles Common Command Cases
+            where theres is no special processing
+            involved.
+        */
+        return function MESSAGE_FACTORY_PRODUCT(message, callback) {
+            // Execute Command
+            exec(command, message, function (data) {
+                // Callback after parsing response into an argument array
+                if (callback) callback.apply(this, processResponse(command, data));
+            });
+            // Return Context
+            return self;
+        }
+    }
     /*
      * Description: Sends a Ping to spamd and returns Pong on response
      * Param: callback {function}
@@ -53,72 +69,42 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.check = function (message, callback) {
-        exec('CHECK', message, function (data) {
-            if (callback) callback.apply(this, processResponse('CHECK', data));
-        });
-        return self;
-    };
+    this.check = MessageFactory('CHECK');
     /*
      * Description: Returns Spam Score and Matches
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.symbols = function (message, callback) {
-        exec('SYMBOLS', message, function (data) {
-            if (callback) callback.apply(this, processResponse('SYMBOLS', data));
-        });
-        return self;
-    };
+    this.symbols = MessageFactory('SYMBOLS');
     /*
      * Description: Returns an object report
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.report = function (message, callback) {
-        exec('REPORT', message, function (data) {
-            if (callback) callback.apply(this, processResponse('REPORT', data));
-        });
-        return self;
-    };
+    this.report = MessageFactory('REPORT');
     /*
      * Description: Returns Object Report if is spam
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.reportIfSpam = function (message, callback) {
-        exec('REPORT_IFSPAM', message, function (data) {
-            if (callback) callback.apply(this, processResponse('REPORT_IFSPAM', data));
-        });
-        return self;
-    };
+    this.reportIfSpam = MessageFactory('REPORT_IFSPAM');
     /*
      * Description: Returns back a report for the message + the message
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.process = function (message, callback) {
-        exec('PROCESS', message, function (data) {
-            if (callback) callback.apply(this, processResponse('PROCESS', data));
-        });
-        return self;
-    };
+    this.process = MessageFactory('PROCESS');
     /*
      * Description: Returns headers for the message
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.headers = function (message, callback) {
-        exec('HEADERS', message, function (data) {
-            if (callback) callback.apply(this, processResponse('HEADERS', data));
-        });
-        return self;
-    };
+    this.headers = MessageFactory('HEADERS');
 
     /*
      * Description: Tell spamd to learn message is spam/ham or forget
