@@ -7,6 +7,7 @@ var expect = chai.expect;
 
 var client = new Spamc();
 
+// Extracted from Spamassassin's training data
 var EASYSPAM = "Return-Path: ler@xample.example.com\n"
 + "Delivery-Date: Wed Sep 11 12:35:04 2002\n"
 + "Return-Path: <013516@aol.com>\n"
@@ -24,7 +25,7 @@ var EASYSPAM = "Return-Path: ler@xample.example.com\n"
 + "\n"
 + "<HTML>\n"
 + "<BODY>\n"
-+ '<iframe align="center" marginwidth=0 marginheight=0 src="http://www.callin.net/20020827" frameborder=0 width=800 scrolling=no height=1700 name="ticker"></iframe>\n'
++ '<iframe align="center" marginwidth=0 marginheight=0 src="http://www.example.com/20020827" frameborder=0 width=800 scrolling=no height=1700 name="ticker"></iframe>\n'
 + "</BODY></HTML>";
 
 describe('Test Suite', function() {
@@ -34,10 +35,11 @@ describe('Test Suite', function() {
 			done();
 		})
 	})
-	it('should successfully run common commands', function() {
+	it('should successfully run common commands', function(done) {
 		client.check(EASYSPAM, function(error, result) {
 			if(error) throw error;
 			expect(result.report).to.be.an('array');
+			done();
 		})
 	})
 })
