@@ -1,6 +1,6 @@
-# node-spamc
+# spamc-stream
 
-node-spamc is a nodejs module that connects to spamassassin's spamd daemon. You are able to:
+spamc-stream is a nodejs module that connects to spamassassin's spamd daemon. You are able to:
 
   - Check a message for a spam score and return back what spamassassin matched on
   - Ability to send messages to spamassassin to learn from
