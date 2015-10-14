@@ -18,6 +18,13 @@
  */
 var net = require('net');
 
+var patterns = {
+    processAll: /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\n]+)/g,
+    process: /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\s]+)/,
+    responseHead: /SPAMD\/([0-9\.]+)\s([0-9]+)\s([0-9A-Z_]+)/,
+    response: /Spam:\s(True|False|Yes|No)\s;\s([0-9\.]+)\s\/\s([0-9\.]+)/
+}
+
 var spamc = function (host, port, timeout) {
     var self = this;
     var protocolVersion = 1.5;
@@ -253,7 +260,7 @@ var spamc = function (host, port, timeout) {
      */
     var processResponse = function (cmd, lines) {
         var returnObj = {};
-        var result = lines[0].match(/SPAMD\/([0-9\.]+)\s([0-9]+)\s([0-9A-Z_]+)/);
+        var result = lines[0].match(patterns.responseHead);
         if (result == null) {
             throw new Error('spamd unreconized response:' + lines[0]);
         }
@@ -264,7 +271,7 @@ var spamc = function (host, port, timeout) {
             returnObj.didRemove = false;
         }
         for (var i = 0; i < lines.length; i++) {
-            var result = lines[i].match(/Spam:\s(True|False|Yes|No)\s;\s([0-9\.]+)\s\/\s([0-9\.]+)/);
+            var result = lines[i].match(patterns.response);
             if (result != null) {
                 returnObj.isSpam = false;
                 if (result[1] == 'True' || result[1] == 'Yes') {
@@ -283,16 +290,14 @@ var spamc = function (host, port, timeout) {
                 }
             }
             if (result == null && cmd != 'PROCESS') {
-                var pattern = /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\n]+)/g;
-                var result = lines[i].match(pattern);
+                var result = lines[i].match(patterns.processAll);
                 if (result != null) {
                     returnObj.report = [];
                     for (var ii = 0; ii < result.length; ii++) {
                         /* Remove New Line if Found */
                         result[ii] = result[ii].replace(/\n([\s]*)/, ' ');
                         /* Match Sections */
-                        var pattern = /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\s]+)/;
-                        var matches = result[ii].match(pattern);
+                        var matches = result[ii].match(patterns.process);
                         returnObj.report[returnObj.report.length] = {
                             score: matches[2],
                             name: matches[3],
