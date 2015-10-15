@@ -1,7 +1,8 @@
 /**
- * Author: Carl Glaysher
+ * Author: Carl Glaysher, Schahriar SaffarShargh
  * Date Created: 17/03/2012
  * Description: Module to emulate SPAMC client in a node way
+ * Protocol Specs: https://svn.apache.org/repos/asf/spamassassin/trunk/spamd/PROTOCOL
  * Available Commands:
  *
  *  ping - returns boolean
