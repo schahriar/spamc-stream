@@ -1,13 +1,13 @@
 /**
- * User: Carl Glaysher
+ * Contributor: Carl Glaysher
  * Date: 17/03/2012
- * Time: 08:46
+ * Updated At: 10/14/2015 by Schahriar SFR.
  * Description: Front end to check spamc client
  */
-var spamc = require('./spamc');
-var client = new spamc();
+var Spamc = require('./spamc');
+var client = new Spamc();
 
-client.report('My Message as String',function(result){
+client.report('My Message as String', function(error, result){
     console.log(result);
 });
 
