@@ -270,7 +270,7 @@ var spamc = function (host, port, timeout) {
             returnObj.didRemove = false;
         }
         for (var i = 0; i < lines.length; i++) {
-            var result = lines[i].match(patterns.response);
+            result = lines[i].match(patterns.response);
             if (result != null) {
                 returnObj.isSpam = false;
                 if (result[1] == 'True' || result[1] == 'Yes') {
@@ -280,7 +280,7 @@ var spamc = function (host, port, timeout) {
                 returnObj.baseSpamScore = parseFloat(result[3]);
             }
             if (result == null) {
-                var result = lines[i].match(/([A-Z0-9\_]+)\,/g);
+                result = lines[i].match(/([A-Z0-9\_]+)\,/g);
                 if (result != null) {
                     returnObj.matches = [];
                     for (var ii = 0; ii < result.length; ii++) {
@@ -289,7 +289,7 @@ var spamc = function (host, port, timeout) {
                 }
             }
             if (result == null && cmd != 'PROCESS') {
-                var result = lines[i].match(patterns.processAll);
+                result = lines[i].match(patterns.processAll);
                 if (result != null) {
                     returnObj.report = [];
                     for (var ii = 0; ii < result.length; ii++) {
