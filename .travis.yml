@@ -10,4 +10,6 @@ addons:
   apt:
     packages:
     - spamassassin
+before_script:
+ - sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/spamassassin
 services: spamassassin
