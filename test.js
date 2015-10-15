@@ -29,6 +29,7 @@ var EASYSPAM = "Return-Path: ler@xample.example.com\n"
 + "</BODY></HTML>";
 
 describe('Test Suite', function() {
+	this.timeout(12000)
 	it('should play ping-pong nicely', function(done){
 		client.ping(function(error, didPlay) {
 			expect(didPlay).to.equal(true);
