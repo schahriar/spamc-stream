@@ -121,37 +121,37 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.learn = function (message, learnType, callback) {
-        var headers;
+    this.learn = function (message, learnType, headers, callback) {
+        // Shift arguments if function is given 2 args
+        if(typeof(headers) === 'function') {
+            callback = headers;
+            headers = undefined;
+        }
+        if(!headers) headers = {};
         switch (learnType.toUpperCase()) {
             case 'SPAM':
-                headers = [
-                    { name: 'Message-class', 'value': 'spam' },
-                    { name: 'Set', 'value': 'local' }
-                ];
+                headers['Message-class'] = 'spam';
+                headers['Set'] = 'local';
                 break;
             case 'HAM':
             case 'NOTSPAM':
             case 'NOT_SPAM':
-                headers = [
-                    { name: 'Message-class', 'value': 'ham' },
-                    { name: 'Set', 'value': 'local' }
-                ];
+                headers['Message-class'] = 'ham';
+                headers['Set'] = 'local';
                 break;
             case 'FORGET':
-                headers = [
-                    { name: 'Remove', 'value': 'local' }
-                ];
+                headers['Remove'] = 'local';
                 break;
             default:
                 callback(new Error('Learn Type Not Found'));
         }
-        exec('TELL', message, function (data) {
+        exec('TELL', message, headers, function (error, data) {
+            if(error) return callback(error);
             var response = processResponse('HEADERS', data);
             if ((response) && (response[1].responseCode == 69)) {
                 if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }else if (callback) callback.apply(this, response);
-        }, headers);
+        });
         return self;
     };
     /*
@@ -160,18 +160,23 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.revoke = function (message, callback) {
-        var headers = [
-            { name: 'Message-class', 'value': 'ham' },
-            { name: 'Set', 'value': 'local,remote' }
-        ];
-        exec('TELL', message, function (data) {
+    this.revoke = function (message, headers, callback) {
+        // Shift arguments if function is given 2 args
+        if(typeof(headers) === 'function') {
+            callback = headers;
+            headers = undefined;
+        }
+        if(!headers) headers = {};
+        headers['Message-class'] = 'ham';
+        headers['Set'] = 'local,remote';
+        exec('TELL', message, headers, function (error, data) {
+            if(error) return callback(error);
             var response = processResponse('HEADERS', data);
             if ((response) && (response[1].responseCode == 69)) {
                 if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }
             else if(callback) callback.apply(this, response);
-        }, headers);
+        });
         return self;
     };
     /*
@@ -180,18 +185,20 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.tell = function (message, callback) {
-        var headers = [
-            { name: 'Message-class', 'value': 'spam' },
-            { name: 'Set', 'value': 'local,remote' }
-        ];
-        exec('TELL', message, function (data) {
+    this.tell = function (message, headers, callback) {
+        // Set Tell Headers
+        if(!headers) headers = {}
+        headers['Message-class'] = 'spam';
+        headers['Set'] = 'local,remote';
+        
+        exec('TELL', message, headers, function (error, data) {
+            if(error) return callback(error);
             var response = processResponse('HEADERS', data);
             if ((response) && (response[1].responseCode == 69)) {
                 callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }
             if(callback) callback.apply(this, response);
-        }, headers);
+        });
         return self;
     };
     /*
@@ -210,9 +217,10 @@ var spamc = function (host, port, timeout) {
             /* Create Command to Send to spamd */
             cmd = cmd + " SPAMC/" + protocolVersion + "\r\n";
             /* Process Extra Headers if Any */
-            if ((extraHeaders) && (typeof(extraHeaders) === 'object')) {
-                for (var i = 0; i < extraHeaders.length; i++) {
-                    cmd = cmd + extraHeaders[i].name + ": " + extraHeaders[i].value + "\r\n";
+            if(extraHeaders) {
+                var key;
+                for(key in extraHeaders) {
+                    cmd = cmd + key + ": " + extraHeaders[key] + "\r\n";
                 }
             }
             if ((Buffer.isBuffer(message)) || (typeof (message) === 'string')) {
@@ -222,15 +230,11 @@ var spamc = function (host, port, timeout) {
                 stream.write(cmd + "\r\n");
             }else if(isStream(message)) {
                 if((!extraHeaders) || (!extraHeaders['Content-length'])) {
-                    return callback(new Error("A Content-length is required in the headers object to process streams. You can pass it through the third argument of every command like so { 'Content-length': length }"))
+                    console.warn("A Content-length may be required in the headers object to process streams. You can pass it through the third argument of every command like so { 'Content-length': length }");
                 }
                 stream.write(cmd + "\r\n");
                 message.setEncoding('utf8');
-                message.pipe(stream, { end: false });
-                message.on('end', function() {
-                    stream.end("\r\n");
-                })
-                
+                message.pipe(stream);
             }else {
                 stream.write(cmd + "\r\n");   
             }
