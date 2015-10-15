@@ -17,6 +17,7 @@
  *
  */
 var net = require('net');
+var stream = require('stream');
 
 var patterns = {
     processAll: /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\n]+)/g,
@@ -31,6 +32,9 @@ var spamc = function (host, port, timeout) {
     host = (host == undefined) ? '127.0.0.1' : host;
     port = (port == undefined) ? 783 : port;
     var connTimoutSecs = (timeout == undefined) ? 10 : timeout;
+    var isStream = function CHECK_IF_IS_STREAM(object) {
+        return (object instanceof stream.Stream);
+    }
     var MessageFactory = function MESSAGE_FACTORY(command) {
         /*
             Handles Common Command Cases
@@ -205,7 +209,8 @@ var spamc = function (host, port, timeout) {
             cmd = cmd + " SPAMC/" + protocolVersion + "\r\n";
             if (typeof (message) == 'string') {
                 message = message + '\r\n';
-                cmd = cmd + "Content-length: " + (message.length) + "\r\n";
+                // Content-length should be optionally passed here
+                //cmd = cmd + "Content-length: " + (message.length) + "\r\n";
                 /* Process Extra Headers if Any */
                 if ((extraHeaders) && (typeof(extraHeaders) === 'object')) {
                     for (var i = 0; i < extraHeaders.length; i++) {
@@ -213,8 +218,15 @@ var spamc = function (host, port, timeout) {
                     }
                 }
                 cmd = cmd + "\r\n" + message;
+            }else if(isStream(message)) {
+                stream.write(cmd + "\r\n");
+                stream.pipe(message, { end: false });
+                stream.on('end', function() {
+                    stream.end('\r\n');
+                })
+            }else {
+                stream.write(cmd + "\r\n");   
             }
-            stream.write(cmd + "\r\n");
         });
         stream.on('error', function (data) {
             if(callback) callback(Error('spamd returned a error: ' + data.toString()));
