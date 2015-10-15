@@ -12,7 +12,8 @@
     "spamc",
     "spamassassin",
     "email",
-    "spam"
+    "spam",
+    "stream"
   ],
   "main": "index.js",
   "directories": {
