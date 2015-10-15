@@ -6,10 +6,8 @@ node_js:
   - "0.11"
   - "0.10"
   - "iojs"
-addons:
-  apt:
-    packages:
-    - spamassassin
+sudo: required
 before_script:
+ - sudo apt-get install spamassassin
  - sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/spamassassin
-services: spamassassin
+ - sudo service spamassassin start
