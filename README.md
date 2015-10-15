@@ -1,33 +1,45 @@
-# node-spamc
+# spamc-stream
 
-node-spamc is a nodejs module that connects to spamassassin's spamd daemon. You are able to:
+spamc-stream is a nodejs module that connects to spamassassin's spamd daemon. You are able to:
 
   - Check a message for a spam score and return back what spamassassin matched on
-  - Ability to send messages to spamassassin to learn from
-  - Ability to do everything that `spamc` is capable of
-
-## Commands Available
-
-  - `check` checks a message for a spam score and returns an object of information
-  - `symbols` like `check` but also returns what the message matched on
-  - `report` like `symbols` but matches also includes a small description
-  - `reportIfSpam` only returns a result if message is spam
-  - `process` like `check` but also returns a processed message with extra headers
-  - `headers` like `check` but also returns the message headers in a array
-  - `learn` abilty to parse a message to spamassassin and learn it as spam or ham
-  - `tell` ability to tell spamassassin that the message is spam
-  - `revoke` abilty to tell spamassassin that the message is not spam
+  - Stream Messages from any [Readable Nodejs Stream](https://nodejs.org/api/stream.html#stream_class_stream_readable)
+  - Ability to train Spamassassin with Ham and Spam
+  - and everything else that `spamc` is capable of
 
 
-## Example
+[![Build Status](https://travis-ci.org/schahriar/spamc-stream.svg)](https://travis-ci.org/schahriar/spamc-stream)
 
-This example will parse a message to spamassassin to perform a report and will callback on success.
+# Usage
+```
+npm install spamc-stream
+```
+
+This example will parse a message to spamassassin to perform a report and will callback on success using a file stream.
 
 ```javascript
+var fs = require('fs');
 var Spamc = require('spamc-stream');
 var client = new Spamc();
 
-client.report('My Message as String',function(result){
-    console.log(result);
+client.report(fs.createReadStream('./tmp/file'), function(result){
+    console.log("Was the email an spam?", result.isSpam);
 });
 ```
+
+## Methods
+
+- check `(message:String|Buffer|Stream, headers:Object || callback:Function, callback:Function) CALLS WITH: (error:Error, result:Object)` - *checks a message for a spam score and returns an object of information.* 
+- report ↑ - *like symbols but matches also includes a small description.*
+- symbols ↑  - *like check but also returns what the message matched on.*
+- reportIfSpam ↑ - *only returns a result if message is spam.*
+- process ↑ - *like check but also returns a processed message with extra headers.*
+- headers ↑ - *like check but also returns the message headers in a array.*
+- learn `(message:String|Buffer|Stream, **type:String['HAM', 'SPAM', 'FORGET', 'NOT_SPAM', 'NOTSPAM']**, headers:Object || callback:Function, callback:Function) CALLS WITH: (error:Error, result:Object)` - *abilty to parse a message to spamassassin and learn it as spam or ham*
+- tell `(message:String|Buffer|Stream, headers:Object || callback:Function, callback:Function) CALLS WITH: (error:Error, result:Object) CALLS WITH: (error:Error, result:Object)` - *ability to tell spamassassin that the message is spam*
+- revoke ↑ - *abilty to tell spamassassin that the message is not spam*
+
+***↑ : Follows the same argument pattern as the previous***
+
+## License
+This module is heavily based on work of Carl Glaysher and who doesn't love the [MIT license](https://raw.githubusercontent.com/schahriar/blackwall/master/LICENSE)?
