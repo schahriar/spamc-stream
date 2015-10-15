@@ -61,11 +61,7 @@ var spamc = function (host, port, timeout) {
     this.ping = function (callback) {
         exec('PING', null, null, function (error, data) {
             /* Check Response has the word PONG */
-            if (data[0].indexOf('PONG') > 0) {
-                callback(error, true);
-            } else {
-                callback(error, false);
-            }
+            callback(error, (data)?(data[0].indexOf('PONG') > 0):false);
         });
         return self;
     };
