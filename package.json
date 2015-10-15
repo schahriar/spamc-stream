@@ -1,6 +1,6 @@
 {
   "name": "spamc-stream",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Schahriar SaffarShargh <info@schahriar.com>",
   "description": "A stream-enabled module to connect to SpamAssassin spamd daemon and process requests",
   "contributors": [
@@ -12,7 +12,8 @@
     "spamc",
     "spamassassin",
     "email",
-    "spam"
+    "spam",
+    "stream"
   ],
   "main": "index.js",
   "directories": {
@@ -29,5 +30,9 @@
   "bugs": {
     "url": "https://github.com/schahriar/spamc-stream/issues"
   },
-  "homepage": "https://github.com/schahriar/spamc-stream#readme"
+  "homepage": "https://github.com/schahriar/spamc-stream#readme",
+  "devDependencies": {
+    "chai": "^3.3.0",
+    "mocha": "^2.3.3"
+  }
 }

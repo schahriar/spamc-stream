@@ -1,7 +1,8 @@
 /**
- * Author: Carl Glaysher
+ * Author: Carl Glaysher, Schahriar SaffarShargh
  * Date Created: 17/03/2012
  * Description: Module to emulate SPAMC client in a node way
+ * Protocol Specs: https://svn.apache.org/repos/asf/spamassassin/trunk/spamd/PROTOCOL
  * Available Commands:
  *
  *  ping - returns boolean
@@ -17,33 +18,56 @@
  *
  */
 var net = require('net');
+var stream = require('stream');
 
 var patterns = {
     processAll: /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\n]+)/g,
     process: /(\s|-)([0-9\.]+)\s([A-Z0-9\_]+)\s([^:]+)\:\s([^\s]+)/,
-    responseHead: /SPAMD\/([0-9\.]+)\s([0-9]+)\s([0-9A-Z_]+)/,
+    // A fix proposed by hassansin @ https://github.com/Flolagale/spamc/commit/cf719a3436e57ff4d799eac1e58b06ab2260fbb1
+    responseHead: /SPAMD\/([0-9\.\-]+)\s([0-9]+)\s([0-9A-Z_]+)/,
     response: /Spam:\s(True|False|Yes|No)\s;\s([0-9\.]+)\s\/\s([0-9\.]+)/
 }
 
 var spamc = function (host, port, timeout) {
     var self = this;
     var protocolVersion = 1.5;
-    var host = (host == undefined) ? '127.0.0.1' : host;
-    var port = (port == undefined) ? 783 : port;
+    host = (host == undefined) ? '127.0.0.1' : host;
+    port = (port == undefined) ? 783 : port;
     var connTimoutSecs = (timeout == undefined) ? 10 : timeout;
+    var isStream = function CHECK_IF_IS_STREAM(object) {
+        return (object instanceof stream.Stream);
+    }
+    var MessageFactory = function MESSAGE_FACTORY(command) {
+        /*
+            Handles Common Command Cases
+            where theres is no special processing
+            involved.
+        */
+        return function MESSAGE_FACTORY_PRODUCT(message, headers, callback) {
+            // Shift arguments if function is given 2 args
+            if(typeof(headers) === 'function') {
+                callback = headers;
+                headers = undefined;
+            }
+            // Execute Command
+            exec(command, message, headers, function (error, data) {
+                if(error) return callback(error);
+                // Callback after parsing response into an argument array
+                if (callback) callback.apply(this, processResponse(command, data));
+            });
+            // Return Context
+            return self;
+        }
+    }
     /*
      * Description: Sends a Ping to spamd and returns Pong on response
      * Param: callback {function}
      * Returns: self
      */
     this.ping = function (callback) {
-        exec('PING', null, function (data) {
+        exec('PING', null, null, function (error, data) {
             /* Check Response has the word PONG */
-            if (data[0].indexOf('PONG') > 0) {
-                callback(null, true);
-            } else {
-                callback(null, false);
-            }
+            callback(error, (data)?(data[0].indexOf('PONG') > 0):false);
         });
         return self;
     };
@@ -53,72 +77,42 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.check = function (message, callback) {
-        exec('CHECK', message, function (data) {
-            if (callback) callback.apply(this, processResponse('CHECK', data));
-        });
-        return self;
-    };
+    this.check = MessageFactory('CHECK');
     /*
      * Description: Returns Spam Score and Matches
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.symbols = function (message, callback) {
-        exec('SYMBOLS', message, function (data) {
-            if (callback) callback.apply(this, processResponse('SYMBOLS', data));
-        });
-        return self;
-    };
+    this.symbols = MessageFactory('SYMBOLS');
     /*
      * Description: Returns an object report
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.report = function (message, callback) {
-        exec('REPORT', message, function (data) {
-            if (callback) callback.apply(this, processResponse('REPORT', data));
-        });
-        return self;
-    };
+    this.report = MessageFactory('REPORT');
     /*
      * Description: Returns Object Report if is spam
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.reportIfSpam = function (message, callback) {
-        exec('REPORT_IFSPAM', message, function (data) {
-            if (callback) callback.apply(this, processResponse('REPORT_IFSPAM', data));
-        });
-        return self;
-    };
+    this.reportIfSpam = MessageFactory('REPORT_IFSPAM');
     /*
      * Description: Returns back a report for the message + the message
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.process = function (message, callback) {
-        exec('PROCESS', message, function (data) {
-            if (callback) callback.apply(this, processResponse('PROCESS', data));
-        });
-        return self;
-    };
+    this.process = MessageFactory('PROCESS');
     /*
      * Description: Returns headers for the message
      * Param: message {string}
      * Param: callback {function}
      * Returns: self
      */
-    this.headers = function (message, callback) {
-        exec('HEADERS', message, function (data) {
-            if (callback) callback.apply(this, processResponse('HEADERS', data));
-        });
-        return self;
-    };
+    this.headers = MessageFactory('HEADERS');
 
     /*
      * Description: Tell spamd to learn message is spam/ham or forget
@@ -127,37 +121,37 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.learn = function (message, learnType, callback) {
-        var headers;
+    this.learn = function (message, learnType, headers, callback) {
+        // Shift arguments if function is given 2 args
+        if(typeof(headers) === 'function') {
+            callback = headers;
+            headers = undefined;
+        }
+        if(!headers) headers = {};
         switch (learnType.toUpperCase()) {
             case 'SPAM':
-                headers = [
-                    { name: 'Message-class', 'value': 'spam' },
-                    { name: 'Set', 'value': 'local' }
-                ];
+                headers['Message-class'] = 'spam';
+                headers['Set'] = 'local';
                 break;
             case 'HAM':
             case 'NOTSPAM':
             case 'NOT_SPAM':
-                headers = [
-                    { name: 'Message-class', 'value': 'ham' },
-                    { name: 'Set', 'value': 'local' }
-                ];
+                headers['Message-class'] = 'ham';
+                headers['Set'] = 'local';
                 break;
             case 'FORGET':
-                headers = [
-                    { name: 'Remove', 'value': 'local' }
-                ];
+                headers['Remove'] = 'local';
                 break;
             default:
                 callback(new Error('Learn Type Not Found'));
         }
-        exec('TELL', message, function (data) {
+        exec('TELL', message, headers, function (error, data) {
+            if(error) return callback(error);
             var response = processResponse('HEADERS', data);
             if ((response) && (response[1].responseCode == 69)) {
                 if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }else if (callback) callback.apply(this, response);
-        }, headers);
+        });
         return self;
     };
     /*
@@ -166,18 +160,23 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.revoke = function (message, callback) {
-        var headers = [
-            { name: 'Message-class', 'value': 'ham' },
-            { name: 'Set', 'value': 'local,remote' }
-        ];
-        exec('TELL', message, function (data) {
+    this.revoke = function (message, headers, callback) {
+        // Shift arguments if function is given 2 args
+        if(typeof(headers) === 'function') {
+            callback = headers;
+            headers = undefined;
+        }
+        if(!headers) headers = {};
+        headers['Message-class'] = 'ham';
+        headers['Set'] = 'local,remote';
+        exec('TELL', message, headers, function (error, data) {
+            if(error) return callback(error);
             var response = processResponse('HEADERS', data);
             if ((response) && (response[1].responseCode == 69)) {
                 if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }
             else if(callback) callback.apply(this, response);
-        }, headers);
+        });
         return self;
     };
     /*
@@ -186,18 +185,20 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: self
      */
-    this.tell = function (message, callback) {
-        var headers = [
-            { name: 'Message-class', 'value': 'spam' },
-            { name: 'Set', 'value': 'local,remote' }
-        ];
-        exec('TELL', message, function (data) {
+    this.tell = function (message, headers, callback) {
+        // Set Tell Headers
+        if(!headers) headers = {}
+        headers['Message-class'] = 'spam';
+        headers['Set'] = 'local,remote';
+        
+        exec('TELL', message, headers, function (error, data) {
+            if(error) return callback(error);
             var response = processResponse('HEADERS', data);
             if ((response) && (response[1].responseCode == 69)) {
                 callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
             }
             if(callback) callback.apply(this, response);
-        }, headers);
+        });
         return self;
     };
     /*
@@ -215,18 +216,28 @@ var spamc = function (host, port, timeout) {
         stream.on('connect', function () {
             /* Create Command to Send to spamd */
             cmd = cmd + " SPAMC/" + protocolVersion + "\r\n";
-            if (typeof (message) == 'string') {
-                message = message + '\r\n';
-                cmd = cmd + "Content-length: " + (message.length) + "\r\n";
-                /* Process Extra Headers if Any */
-                if (typeof (extraHeaders) == 'object') {
-                    for (var i = 0; i < extraHeaders.length; i++) {
-                        cmd = cmd + extraHeaders[i].name + ": " + extraHeaders[i].value + "\r\n";
-                    }
+            /* Process Extra Headers if Any */
+            if(extraHeaders) {
+                var key;
+                for(key in extraHeaders) {
+                    cmd = cmd + key + ": " + extraHeaders[key] + "\r\n";
                 }
-                cmd = cmd + "\r\n" + message;
             }
-            stream.write(cmd + "\r\n");
+            if ((Buffer.isBuffer(message)) || (typeof (message) === 'string')) {
+                message = message.toString('utf8') + '\r\n';
+                cmd = cmd + "Content-length: " + (Buffer.byteLength(message)) + "\r\n";
+                cmd = cmd + "\r\n" + message;
+                stream.write(cmd + "\r\n");
+            }else if(isStream(message)) {
+                if((!extraHeaders) || (!extraHeaders['Content-length'])) {
+                    console.warn("A Content-length may be required in the headers object to process streams. You can pass it through the third argument of every command like so { 'Content-length': length }");
+                }
+                stream.write(cmd + "\r\n");
+                message.setEncoding('utf8');
+                message.pipe(stream);
+            }else {
+                stream.write(cmd + "\r\n");   
+            }
         });
         stream.on('error', function (data) {
             if(callback) callback(Error('spamd returned a error: ' + data.toString()));
@@ -264,7 +275,7 @@ var spamc = function (host, port, timeout) {
             returnObj.didRemove = false;
         }
         for (var i = 0; i < lines.length; i++) {
-            var result = lines[i].match(patterns.response);
+            result = lines[i].match(patterns.response);
             if (result != null) {
                 returnObj.isSpam = false;
                 if (result[1] == 'True' || result[1] == 'Yes') {
@@ -274,7 +285,7 @@ var spamc = function (host, port, timeout) {
                 returnObj.baseSpamScore = parseFloat(result[3]);
             }
             if (result == null) {
-                var result = lines[i].match(/([A-Z0-9\_]+)\,/g);
+                result = lines[i].match(/([A-Z0-9\_]+)\,/g);
                 if (result != null) {
                     returnObj.matches = [];
                     for (var ii = 0; ii < result.length; ii++) {
@@ -283,7 +294,7 @@ var spamc = function (host, port, timeout) {
                 }
             }
             if (result == null && cmd != 'PROCESS') {
-                var result = lines[i].match(patterns.processAll);
+                result = lines[i].match(patterns.processAll);
                 if (result != null) {
                     returnObj.report = [];
                     for (var ii = 0; ii < result.length; ii++) {
