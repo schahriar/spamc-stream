@@ -38,7 +38,7 @@ describe('Test Suite', function() {
 	it('should successfully run common commands', function(done) {
 		client.check(EASYSPAM, function(error, result) {
 			if(error) throw error;
-			expect(result.report).to.be.an('array');
+			expect(result.isSpam).to.equal(true);
 			done();
 		})
 	})
