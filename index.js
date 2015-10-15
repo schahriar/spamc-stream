@@ -37,9 +37,15 @@ var spamc = function (host, port, timeout) {
             where theres is no special processing
             involved.
         */
-        return function MESSAGE_FACTORY_PRODUCT(message, callback) {
+        return function MESSAGE_FACTORY_PRODUCT(message, headers, callback) {
+            // Shift arguments if function is given 2 args
+            if(typeof(headers) === 'function') {
+                callback = headers;
+                headers = undefined;
+            }
             // Execute Command
-            exec(command, message, function (data) {
+            exec(command, message, headers, function (error, data) {
+                if(error) return callback(error);
                 // Callback after parsing response into an argument array
                 if (callback) callback.apply(this, processResponse(command, data));
             });
@@ -53,12 +59,12 @@ var spamc = function (host, port, timeout) {
      * Returns: self
      */
     this.ping = function (callback) {
-        exec('PING', null, function (data) {
+        exec('PING', null, null, function (error, data) {
             /* Check Response has the word PONG */
             if (data[0].indexOf('PONG') > 0) {
-                callback(null, true);
+                callback(error, true);
             } else {
-                callback(null, false);
+                callback(error, false);
             }
         });
         return self;
@@ -205,7 +211,7 @@ var spamc = function (host, port, timeout) {
                 message = message + '\r\n';
                 cmd = cmd + "Content-length: " + (message.length) + "\r\n";
                 /* Process Extra Headers if Any */
-                if (typeof (extraHeaders) == 'object') {
+                if ((extraHeaders) && (typeof(extraHeaders) === 'object')) {
                     for (var i = 0; i < extraHeaders.length; i++) {
                         cmd = cmd + extraHeaders[i].name + ": " + extraHeaders[i].value + "\r\n";
                     }
