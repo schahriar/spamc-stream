@@ -207,23 +207,28 @@ var spamc = function (host, port, timeout) {
         stream.on('connect', function () {
             /* Create Command to Send to spamd */
             cmd = cmd + " SPAMC/" + protocolVersion + "\r\n";
-            if (typeof (message) == 'string') {
-                message = message + '\r\n';
-                // Content-length should be optionally passed here
-                //cmd = cmd + "Content-length: " + (message.length) + "\r\n";
-                /* Process Extra Headers if Any */
-                if ((extraHeaders) && (typeof(extraHeaders) === 'object')) {
-                    for (var i = 0; i < extraHeaders.length; i++) {
-                        cmd = cmd + extraHeaders[i].name + ": " + extraHeaders[i].value + "\r\n";
-                    }
+            /* Process Extra Headers if Any */
+            if ((extraHeaders) && (typeof(extraHeaders) === 'object')) {
+                for (var i = 0; i < extraHeaders.length; i++) {
+                    cmd = cmd + extraHeaders[i].name + ": " + extraHeaders[i].value + "\r\n";
                 }
+            }
+            if ((Buffer.isBuffer(message)) || (typeof (message) === 'string')) {
+                message = message.toString('utf8') + '\r\n';
+                cmd = cmd + "Content-length: " + (Buffer.byteLength(message)) + "\r\n";
                 cmd = cmd + "\r\n" + message;
-            }else if(isStream(message)) {
                 stream.write(cmd + "\r\n");
-                stream.pipe(message, { end: false });
-                stream.on('end', function() {
-                    stream.end('\r\n');
+            }else if(isStream(message)) {
+                if((!extraHeaders) || (!extraHeaders['Content-length'])) {
+                    return callback(new Error("A Content-length is required in the headers object to process streams. You can pass it through the third argument of every command like so { 'Content-length': length }"))
+                }
+                stream.write(cmd + "\r\n");
+                message.setEncoding('utf8');
+                message.pipe(stream, { end: false });
+                message.on('end', function() {
+                    stream.end("\r\n");
                 })
+                
             }else {
                 stream.write(cmd + "\r\n");   
             }
