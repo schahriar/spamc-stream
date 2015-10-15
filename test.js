@@ -11,7 +11,11 @@ var client = new Spamc();
 // Extracted from Spamassassin's training data
 var EASYSPAM = fs.createReadStream('./samples/easyspam');
 var EASYSPAMLENGTH = fs.statSync('./samples/easyspam').size;
-var EASYHAM1 = fs.readFileSync('./samples/easyspam');
+var EASYHAM1 = fs.readFileSync('./samples/easyham-1');
+var EASYHAM2 = fs.createReadStream('./samples/easyham-2');
+var EASYHAM2LENGTH = fs.statSync('./samples/easyham-2').size;
+var EASYSPAMCOPY = fs.createReadStream('./samples/easyspam');
+var EASYSPAMCOPY2 = fs.createReadStream('./samples/easyspam');
 
 describe('Test Suite', function() {
 	this.timeout(12000)
@@ -24,7 +28,7 @@ describe('Test Suite', function() {
 	it('should successfully run a file through', function(done) {
 		client.check(EASYHAM1, function(error, result) {
 			if(error) throw error;
-			expect(result.isSpam).to.equal(true);
+			expect(result.isSpam).to.equal(false);
 			done();
 		})
 	})
@@ -32,6 +36,34 @@ describe('Test Suite', function() {
 		client.check(EASYSPAM, { 'Content-length': EASYSPAMLENGTH }, function(error, result) {
 			if(error) throw error;
 			expect(result.isSpam).to.equal(true);
+			done();
+		})
+	})
+	it('should successfully Tell a stream', function(done) {
+		client.tell(EASYSPAMCOPY, { 'Content-length': EASYSPAMLENGTH }, function(error, result) {
+			if(error) throw error;
+			expect(result.responseMessage).to.equal("EX_OK");
+			done();
+		})
+	})
+	it('should successfully Revoke a stream', function(done) {
+		client.revoke(EASYSPAMCOPY2, { 'Content-length': EASYSPAMLENGTH }, function(error, result) {
+			if(error) throw error;
+			expect(result.responseMessage).to.equal("EX_OK");
+			done();
+		})
+	})
+	it('should successfully Learn a file', function(done) {
+		client.learn(EASYHAM1, "HAM", function(error, result) {
+			if(error) throw error;
+			expect(result.responseMessage).to.equal("EX_OK");
+			done();
+		})
+	})
+	it('should successfully Learn a stream with headers', function(done) {
+		client.learn(EASYHAM2, "HAM", { 'Content-length': EASYHAM2LENGTH }, function(error, result) {
+			if(error) throw error;
+			expect(result.responseMessage).to.equal("EX_OK");
 			done();
 		})
 	})
