@@ -10,4 +10,5 @@ sudo: required
 before_script:
  - sudo apt-get install spamassassin
  - sudo sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/spamassassin
+ - sudo sed -i 's/OPTIONS="/OPTIONS="-l /' /etc/default/spamassassin
  - sudo service spamassassin start
