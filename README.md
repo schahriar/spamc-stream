@@ -15,14 +15,14 @@ spamc-stream is a nodejs module that connects to spamassassin's spamd daemon. Yo
 npm install spamc-stream
 ```
 
-This example will parse a message to spamassassin to perform a report and will callback on success using a file stream.
+This example will parse a message to spamassassin to perform a report and will callback on success using a file stream. Note that there is no transformation happening on spamc-stream's side therefore the stream is directly piped into the TCP/NET connection. 
 
 ```javascript
 var fs = require('fs');
 var Spamc = require('spamc-stream');
 var client = new Spamc();
 
-client.report(fs.createReadStream('./tmp/file'), function(result){
+client.report(fs.createReadStream('./tmp/file'), function(error, result){
     console.log("Was the email an spam?", result.isSpam);
 });
 ```
