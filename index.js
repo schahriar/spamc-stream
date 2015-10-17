@@ -136,11 +136,11 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      * Returns: Socket
      */
-    this.learnSpam = MessageFactory('TELL', {
+    this.spam = MessageFactory('TELL', {
         'Message-class':    'spam',
         'Set':              'local'
     }, 'HEADERS');
-    this.learnHam = MessageFactory('TELL', {
+    this.ham = MessageFactory('TELL', {
         'Message-class':    'ham',
         'Set':              'local'
     }, 'HEADERS');
