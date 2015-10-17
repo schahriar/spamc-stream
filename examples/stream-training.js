@@ -19,8 +19,8 @@ client.tell(SPAMStream, function(error, result){
 client.revoke(SPAMStream, function(error, result){
     console.log(result);
 });
-// Train Ham - Types(SPAM, HAM || NOTSPAM || NOT_SPAM, FORGET)
-client.learn(HAMStream, "HAM", function(error, result) {
+// Train Ham
+client.ham(HAMStream, function(error, result) {
     
 })
 
