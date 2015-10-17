@@ -54,14 +54,14 @@ describe('Test Suite', function() {
 		})
 	})
 	it('should successfully Learn a file', function(done) {
-		client.learn(EASYHAM1, "HAM", function(error, result) {
+		client.ham(EASYHAM1, function(error, result) {
 			if(error) throw error;
 			expect(result.responseMessage).to.equal("EX_OK");
 			done();
 		})
 	})
 	it('should successfully Learn a stream with headers', function(done) {
-		client.learn(EASYHAM2, "HAM", { 'Content-length': EASYHAM2LENGTH }, function(error, result) {
+		client.ham(EASYHAM2, { 'Content-length': EASYHAM2LENGTH }, function(error, result) {
 			if(error) throw error;
 			expect(result.responseMessage).to.equal("EX_OK");
 			done();

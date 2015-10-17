@@ -35,8 +35,10 @@ client.report(fs.createReadStream('./tmp/file'), function(error, result){
 - reportIfSpam ↑ - *only returns a result if message is spam.*
 - process ↑ - *like check but also returns a processed message with extra headers.*
 - headers ↑ - *like check but also returns the message headers in a array.*
-- learn `(message:String|Buffer|Stream, **type:String['HAM', 'SPAM', 'FORGET', 'NOT_SPAM', 'NOTSPAM']**, headers:Object || callback:Function, callback:Function) CALLS WITH: (error:Error, result:Object)` - *abilty to parse a message to spamassassin and learn it as spam or ham*
-- tell `(message:String|Buffer|Stream, headers:Object || callback:Function, callback:Function) CALLS WITH: (error:Error, result:Object) CALLS WITH: (error:Error, result:Object)` - *ability to tell spamassassin that the message is spam*
+- spam ↑ - *parse a message to spamassassin and learn it as spam*
+- ham ↑ - *parse a message to spamassassin and learn it as ham*
+- forget ↑ - *parse a message to spamassassin and forget it*
+- tell ↑ - *ability to tell spamassassin that the message is spam*
 - revoke ↑ - *abilty to tell spamassassin that the message is not spam*
 
 ***↑ : Follows the same argument pattern as the previous***

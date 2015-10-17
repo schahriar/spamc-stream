@@ -37,7 +37,7 @@ var spamc = function (host, port, timeout) {
     var isStream = function CHECK_IF_IS_STREAM(object) {
         return (object instanceof stream.Stream);
     }
-    var MessageFactory = function MESSAGE_FACTORY(command) {
+    var MessageFactory = function MESSAGE_FACTORY(command, master_headers, processAs) {
         /*
             Handles Common Command Cases
             where theres is no special processing
@@ -49,20 +49,36 @@ var spamc = function (host, port, timeout) {
                 callback = headers;
                 headers = undefined;
             }
-            // Execute Command
-            exec(command, message, headers, function (error, data) {
+            // Merge Master Headers to Headers (IF ANY)
+            if(master_headers) {
+                if((!!headers) || (typeof(headers) === 'object')) {
+                    var key;
+                    for (key in master_headers){
+                        headers[key] = master_headers[key];
+                    }
+                }else{
+                    // If headers are not set, use master headers
+                    headers = master_headers;
+                }
+            }
+            // Execute Command & Return Stream
+            return exec(command, message, headers, function (error, data) {
                 if(error) return callback(error);
+                var response = processResponse(processAs || command, data);
+                // Return if Tell error occurred
+                if ((response) && (response[1]) && (response[1].responseCode == 69)) {
+                    if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
+                    return;
+                }
                 // Callback after parsing response into an argument array
-                if (callback) callback.apply(this, processResponse(command, data));
+                if (callback) callback.apply(this, response);
             });
-            // Return Context
-            return self;
         }
     }
     /*
      * Description: Sends a Ping to spamd and returns Pong on response
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.ping = function (callback) {
         exec('PING', null, null, function (error, data) {
@@ -75,132 +91,83 @@ var spamc = function (host, port, timeout) {
      * Description: returns spam score
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.check = MessageFactory('CHECK');
     /*
      * Description: Returns Spam Score and Matches
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.symbols = MessageFactory('SYMBOLS');
     /*
      * Description: Returns an object report
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.report = MessageFactory('REPORT');
     /*
      * Description: Returns Object Report if is spam
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.reportIfSpam = MessageFactory('REPORT_IFSPAM');
     /*
      * Description: Returns back a report for the message + the message
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.process = MessageFactory('PROCESS');
     /*
      * Description: Returns headers for the message
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
     this.headers = MessageFactory('HEADERS');
 
     /*
      * Description: Tell spamd to learn message is spam/ham or forget
      * Param: message {string}
-     * Param: learnType {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
-    this.learn = function (message, learnType, headers, callback) {
-        // Shift arguments if function is given 2 args
-        if(typeof(headers) === 'function') {
-            callback = headers;
-            headers = undefined;
-        }
-        if(!headers) headers = {};
-        switch (learnType.toUpperCase()) {
-            case 'SPAM':
-                headers['Message-class'] = 'spam';
-                headers['Set'] = 'local';
-                break;
-            case 'HAM':
-            case 'NOTSPAM':
-            case 'NOT_SPAM':
-                headers['Message-class'] = 'ham';
-                headers['Set'] = 'local';
-                break;
-            case 'FORGET':
-                headers['Remove'] = 'local';
-                break;
-            default:
-                callback(new Error('Learn Type Not Found'));
-        }
-        exec('TELL', message, headers, function (error, data) {
-            if(error) return callback(error);
-            var response = processResponse('HEADERS', data);
-            if ((response) && (response[1].responseCode == 69)) {
-                if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
-            }else if (callback) callback.apply(this, response);
-        });
-        return self;
-    };
+    this.spam = MessageFactory('TELL', {
+        'Message-class':    'spam',
+        'Set':              'local'
+    }, 'HEADERS');
+    this.ham = MessageFactory('TELL', {
+        'Message-class':    'ham',
+        'Set':              'local'
+    }, 'HEADERS');
+    this.forget = MessageFactory('TELL', {
+        'Remove':   'local'
+    }, 'HEADERS');
     /*
      * Description: tell spamd message is not spam
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
-    this.revoke = function (message, headers, callback) {
-        // Shift arguments if function is given 2 args
-        if(typeof(headers) === 'function') {
-            callback = headers;
-            headers = undefined;
-        }
-        if(!headers) headers = {};
-        headers['Message-class'] = 'ham';
-        headers['Set'] = 'local,remote';
-        exec('TELL', message, headers, function (error, data) {
-            if(error) return callback(error);
-            var response = processResponse('HEADERS', data);
-            if ((response) && (response[1].responseCode == 69)) {
-                if(callback) callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
-            }
-            else if(callback) callback.apply(this, response);
-        });
-        return self;
-    };
+    this.revoke = MessageFactory('TELL', {
+        'Message-class':    'ham',
+        'Set':              'local,remote'
+    }, 'HEADERS');
+    
     /*
      * Description: Tell spamd message is spam
      * Param: message {string}
      * Param: callback {function}
-     * Returns: self
+     * Returns: Socket
      */
-    this.tell = function (message, headers, callback) {
-        // Set Tell Headers
-        if(!headers) headers = {}
-        headers['Message-class'] = 'spam';
-        headers['Set'] = 'local,remote';
-        
-        exec('TELL', message, headers, function (error, data) {
-            if(error) return callback(error);
-            var response = processResponse('HEADERS', data);
-            if ((response) && (response[1].responseCode == 69)) {
-                callback(new Error('TELL commands are not enabled, set the --allow-tell switch.'));
-            }
-            if(callback) callback.apply(this, response);
-        });
-        return self;
-    };
+    this.tell = MessageFactory('TELL', {
+        'Message-class':    'spam',
+        'Set':              'local,remote'
+    }, 'HEADERS');
     /*
      * Description: Sends a command to spamd
      * Param: cmd {string}
@@ -236,7 +203,7 @@ var spamc = function (host, port, timeout) {
                 message.setEncoding('utf8');
                 message.pipe(stream);
             }else {
-                stream.write(cmd + "\r\n");   
+                stream.write(cmd + "\r\n");
             }
         });
         stream.on('error', function (data) {
@@ -255,12 +222,14 @@ var spamc = function (host, port, timeout) {
         stream.on('close', function () {
             if(callback) callback(null, responseData);
         })
+        // Return Stream for processing
+        return stream;
     };
     /*
      * Description: Processes Response from spamd and put into a formatted object
      * Param: cmd {string}
      * Param: lines {array[string]}
-     * Return: [{Error}, {Object} ]
+     * Return: [{Error}, {Object}]
      */
     var processResponse = function (cmd, lines) {
         var returnObj = {};
