@@ -22,14 +22,36 @@ var fs = require('fs');
 var Spamc = require('spamc-stream');
 var client = new Spamc();
 
-client.report(fs.createReadStream('./tmp/file'), function(error, result){
-    console.log("Was the email an spam?", result.isSpam);
-});
+var reporter = client.report();
+
+var fsStream = fs.createReadStream('./tmp/file');
+fsStream.pipe(reporter);
+
+reporter.on('report', function(report) {
+  console.log("Was the email a spam?", report.isSpam);
+})
+
+reporter.on('error', function(error) {
+  console.log(error);
+})
+```
+
+### Callback API
+```javascript
+var fs = require('fs');
+var Spamc = require('spamc-stream');
+var client = new Spamc();
+
+var buffer = fs.readFileSync('./tmp/file');
+// Args: header, buffer, callback
+client.report({}, buffer, function(error, report) {
+  console.log("Was the email a spam?", report.isSpam);
+})
 ```
 
 ## Methods
 
-- check `(message:String|Buffer|Stream, headers:Object || callback:Function, callback:Function) CALLS WITH: (error:Error, result:Object)` - *checks a message for a spam score and returns an object of information.* 
+- check `(headers:Object) Returns: PassThrough Stream` - *checks a message for a spam score and returns an object of information.* 
 - report ↑ - *like symbols but matches also includes a small description.*
 - symbols ↑  - *like check but also returns what the message matched on.*
 - reportIfSpam ↑ - *only returns a result if message is spam.*
