@@ -233,6 +233,7 @@ var spamc = function (host, port, timeout) {
      */
     var processResponse = function (cmd, lines) {
         var returnObj = {};
+        if(!lines[0]) return ["Could not match response", null];
         var result = lines[0].match(patterns.responseHead);
         if (result == null) {
             return [new Error('spamd unreconized response:' + lines[0])]
