@@ -37,7 +37,7 @@ reporter.on('error', function(error) {
 ```
 
 ## Methods
-
+- ping - Check if Spamc is working. Returns two arguments of error and pong. If Pong is true then Spamc is available.
 - check `(headers:Object) Returns: PassThrough Stream` - *checks a message for a spam score and returns an object of information.* 
 - report ↑ - *like symbols but matches also includes a small description.*
 - symbols ↑  - *like check but also returns what the message matched on.*
