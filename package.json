@@ -16,9 +16,6 @@
     "stream"
   ],
   "main": "index.js",
-  "directories": {
-    "example": "examples"
-  },
   "scripts": {
     "test": "mocha test.js"
   },
