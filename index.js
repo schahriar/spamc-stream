@@ -43,17 +43,15 @@ var spamc = function (host, port, timeout) {
             where theres is no special processing
             involved.
         */
-        return function MESSAGE_FACTORY_PRODUCT(headers, message, callback) {
+        return function MESSAGE_FACTORY_PRODUCT(headers) {
             var PassThroughStream = new stream.PassThrough;
 
-            // If Streamable api is used emit
-            if(!callback) {
-                callback = function(error, results) {
-                    if(error) {
-                        PassThroughStream.emit('error', error);
-                    }else{
-                        PassThroughStream.emit('report', results)
-                    }
+            // Callback For Results
+            var callback = function(error, results) {
+                if(error) {
+                    PassThroughStream.emit('error', error);
+                }else{
+                    PassThroughStream.emit('report', results)
                 }
             }
             // Merge Master Headers to Headers (IF ANY)
@@ -69,7 +67,7 @@ var spamc = function (host, port, timeout) {
                 }
             }
             // Execute Command & Return Stream
-            exec.apply(PassThroughStream, [command, message, headers, function (error, data) {
+            exec.apply(PassThroughStream, [command, headers, function (error, data) {
                 if(error) return callback(error);
                 var response = processResponse(processAs || command, data);
                 // Return if Tell error occurred
@@ -89,7 +87,7 @@ var spamc = function (host, port, timeout) {
      * Param: callback {function}
      */
     this.ping = function (callback) {
-        exec('PING', null, null, function (error, data) {
+        exec('PING', null, function (error, data) {
             /* Check Response has the word PONG */
             callback(error, (data)?(data[0].indexOf('PONG') > 0):false);
         });
@@ -181,7 +179,7 @@ var spamc = function (host, port, timeout) {
      * Param: message {string}
      * Param: onData {function(data)}
      */
-    var exec = function (cmd, message, extraHeaders, callback) {
+    var exec = function (cmd, extraHeaders, callback) {
         var _this = this;
         var responseData = [];
         var stream = net.createConnection(port, host);
@@ -205,11 +203,6 @@ var spamc = function (host, port, timeout) {
                 stream.write(cmd + "\r\n");
                 _this.setEncoding('utf8');
                 _this.pipe(stream);
-            }else if ((Buffer.isBuffer(message)) || (typeof (message) === 'string')) {
-                message = message.toString('utf8') + '\r\n';
-                cmd = cmd + "Content-length: " + (Buffer.byteLength(message)) + "\r\n";
-                cmd = cmd + "\r\n" + message;
-                stream.write(cmd + "\r\n");
             }else {
                 stream.write(cmd + "\r\n");
             }
