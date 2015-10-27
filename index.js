@@ -197,9 +197,6 @@ var spamc = function (host, port, timeout) {
                 }
             }
             if(isStream(_this)) {
-                if((!extraHeaders) || (!extraHeaders['Content-length'])) {
-                    console.warn("A Content-length may be required in the headers object to process streams. You can pass it through the third argument of every command like so { 'Content-length': length }");
-                }
                 stream.write(cmd + "\r\n");
                 _this.setEncoding('utf8');
                 _this.pipe(stream);
