@@ -44,6 +44,7 @@ var spamc = function (host, port, timeout) {
             involved.
         */
         return function MESSAGE_FACTORY_PRODUCT(message, headers, callback) {
+            var PassThroughStream = new stream.PassThrough;
             // Shift arguments if function is given 2 args
             if(typeof(headers) === 'function') {
                 callback = headers;
@@ -61,8 +62,9 @@ var spamc = function (host, port, timeout) {
                     headers = master_headers;
                 }
             }
+            if(!message) message = PassThroughStream;
             // Execute Command & Return Stream
-            return exec(command, message, headers, function (error, data) {
+            exec(command, message, headers, function (error, data) {
                 if(error) return callback(error);
                 var response = processResponse(processAs || command, data);
                 // Return if Tell error occurred
@@ -73,60 +75,60 @@ var spamc = function (host, port, timeout) {
                 // Callback after parsing response into an argument array
                 if (callback) callback.apply(this, response);
             });
+            
+            return PassThroughStream;
         }
     }
     /*
      * Description: Sends a Ping to spamd and returns Pong on response
      * Param: callback {function}
-     * Returns: Socket
      */
     this.ping = function (callback) {
         exec('PING', null, null, function (error, data) {
             /* Check Response has the word PONG */
             callback(error, (data)?(data[0].indexOf('PONG') > 0):false);
         });
-        return self;
     };
     /*
      * Description: returns spam score
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.check = MessageFactory('CHECK');
     /*
      * Description: Returns Spam Score and Matches
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.symbols = MessageFactory('SYMBOLS');
     /*
      * Description: Returns an object report
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.report = MessageFactory('REPORT');
     /*
      * Description: Returns Object Report if is spam
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.reportIfSpam = MessageFactory('REPORT_IFSPAM');
     /*
      * Description: Returns back a report for the message + the message
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.process = MessageFactory('PROCESS');
     /*
      * Description: Returns headers for the message
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.headers = MessageFactory('HEADERS');
 
@@ -134,7 +136,7 @@ var spamc = function (host, port, timeout) {
      * Description: Tell spamd to learn message is spam/ham or forget
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.spam = MessageFactory('TELL', {
         'Message-class':    'spam',
@@ -151,7 +153,7 @@ var spamc = function (host, port, timeout) {
      * Description: tell spamd message is not spam
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.revoke = MessageFactory('TELL', {
         'Message-class':    'ham',
@@ -162,7 +164,7 @@ var spamc = function (host, port, timeout) {
      * Description: Tell spamd message is spam
      * Param: message {string}
      * Param: callback {function}
-     * Returns: Socket
+     * Returns: PassThrough
      */
     this.tell = MessageFactory('TELL', {
         'Message-class':    'spam',
