@@ -43,12 +43,18 @@ var spamc = function (host, port, timeout) {
             where theres is no special processing
             involved.
         */
-        return function MESSAGE_FACTORY_PRODUCT(message, headers, callback) {
+        return function MESSAGE_FACTORY_PRODUCT(headers, message, callback) {
             var PassThroughStream = new stream.PassThrough;
-            // Shift arguments if function is given 2 args
-            if(typeof(headers) === 'function') {
-                callback = headers;
-                headers = undefined;
+
+            // If Streamable api is used emit
+            if(!callback) {
+                callback = function(error, results) {
+                    if(error) {
+                        PassThroughStream.emit('error', error);
+                    }else{
+                        PassThroughStream.emit('report', results)
+                    }
+                }
             }
             // Merge Master Headers to Headers (IF ANY)
             if(master_headers) {
@@ -62,9 +68,8 @@ var spamc = function (host, port, timeout) {
                     headers = master_headers;
                 }
             }
-            if(!message) message = PassThroughStream;
             // Execute Command & Return Stream
-            exec(command, message, headers, function (error, data) {
+            exec.apply(PassThroughStream, [command, message, headers, function (error, data) {
                 if(error) return callback(error);
                 var response = processResponse(processAs || command, data);
                 // Return if Tell error occurred
@@ -74,7 +79,7 @@ var spamc = function (host, port, timeout) {
                 }
                 // Callback after parsing response into an argument array
                 if (callback) callback.apply(this, response);
-            });
+            }]);
             
             return PassThroughStream;
         }
@@ -177,6 +182,7 @@ var spamc = function (host, port, timeout) {
      * Param: onData {function(data)}
      */
     var exec = function (cmd, message, extraHeaders, callback) {
+        var _this = this;
         var responseData = [];
         var stream = net.createConnection(port, host);
         stream.setTimeout(connTimoutSecs * 1000, function () {
@@ -192,18 +198,18 @@ var spamc = function (host, port, timeout) {
                     cmd = cmd + key + ": " + extraHeaders[key] + "\r\n";
                 }
             }
-            if ((Buffer.isBuffer(message)) || (typeof (message) === 'string')) {
-                message = message.toString('utf8') + '\r\n';
-                cmd = cmd + "Content-length: " + (Buffer.byteLength(message)) + "\r\n";
-                cmd = cmd + "\r\n" + message;
-                stream.write(cmd + "\r\n");
-            }else if(isStream(message)) {
+            if(isStream(_this)) {
                 if((!extraHeaders) || (!extraHeaders['Content-length'])) {
                     console.warn("A Content-length may be required in the headers object to process streams. You can pass it through the third argument of every command like so { 'Content-length': length }");
                 }
                 stream.write(cmd + "\r\n");
-                message.setEncoding('utf8');
-                message.pipe(stream);
+                _this.setEncoding('utf8');
+                _this.pipe(stream);
+            }else if ((Buffer.isBuffer(message)) || (typeof (message) === 'string')) {
+                message = message.toString('utf8') + '\r\n';
+                cmd = cmd + "Content-length: " + (Buffer.byteLength(message)) + "\r\n";
+                cmd = cmd + "\r\n" + message;
+                stream.write(cmd + "\r\n");
             }else {
                 stream.write(cmd + "\r\n");
             }
@@ -224,8 +230,6 @@ var spamc = function (host, port, timeout) {
         stream.on('close', function () {
             if(callback) callback(null, responseData);
         })
-        // Return Stream for processing
-        return stream;
     };
     /*
      * Description: Processes Response from spamd and put into a formatted object
