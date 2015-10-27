@@ -52,5 +52,22 @@ reporter.on('error', function(error) {
 
 ***↑ : Follows the same argument pattern as the previous***
 
+## Header
+All functions take a header argument before returning a PassThrough Stream. [Documentation on these headers is available here.](https://svn.apache.org/repos/asf/spamassassin/trunk/spamd/PROTOCOL)
+
+**Note:** To maintain protocol API compatibility it is advised to pass a 'Content-length' header with every request like so:
+```javascript
+var fs = require('fs');
+var Spamc = require('spamc-stream');
+var client = new Spamc();
+
+var spam = fs.createReadStream('./samples/easyspam');
+var spamLength = fs.statSync('./samples/easyspam').size;
+
+var reporter = client.report({ 'Content-length': spamLength });
+spam.pipe(reporter);
+// ...
+```
+
 ## License
 This module is heavily based on work of Carl Glaysher and who doesn't love the [MIT license](https://raw.githubusercontent.com/schahriar/blackwall/master/LICENSE)?
