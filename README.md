@@ -36,19 +36,6 @@ reporter.on('error', function(error) {
 })
 ```
 
-### Callback API
-```javascript
-var fs = require('fs');
-var Spamc = require('spamc-stream');
-var client = new Spamc();
-
-var buffer = fs.readFileSync('./tmp/file');
-// Args: header, buffer, callback
-client.report({}, buffer, function(error, report) {
-  console.log("Was the email a spam?", report.isSpam);
-})
-```
-
 ## Methods
 
 - check `(headers:Object) Returns: PassThrough Stream` - *checks a message for a spam score and returns an object of information.* 
