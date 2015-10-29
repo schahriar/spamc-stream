@@ -268,6 +268,9 @@ var spamc = function (host, port, timeout) {
                         result[ii] = result[ii].replace(/\n([\s]*)/, ' ');
                         /* Match Sections */
                         var matches = result[ii].match(patterns.process);
+                        // Fixes a throw when Match fails
+                        if(!matches) return [new Error("Could Not Match Response")];
+                        
                         returnObj.report[returnObj.report.length] = {
                             score: matches[2],
                             name: matches[3],
