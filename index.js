@@ -33,7 +33,7 @@ var spamc = function (host, port, timeout) {
     var protocolVersion = 1.5;
     host = (host == undefined) ? '127.0.0.1' : host;
     port = (port == undefined) ? 783 : port;
-    var connTimoutSecs = (timeout == undefined) ? 10 : timeout;
+    var connTimoutSecs = (timeout == undefined) ? 15 : timeout;
     var isStream = function CHECK_IF_IS_STREAM(object) {
         return (object instanceof stream.Stream);
     }
