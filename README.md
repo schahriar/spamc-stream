@@ -36,6 +36,15 @@ reporter.on('error', function(error) {
 })
 ```
 
+## Connection settings
+You can define connection settings such as host, port and timeout when creating a new instance:
+```javascript
+var Spamc = require('spamc-stream');
+// Args, Host, Port, Timeout (seconds)
+var client = new Spamc('localhost', 783, 15);
+```
+Note that the default port for Spamassassin is set to 783 and Connection Timeout is in seconds.
+
 ## Methods
 - ping - Check if Spamc is working. Returns two arguments of error and pong. If Pong is true then Spamc is available.
 - check `(headers:Object) Returns: PassThrough Stream` - *checks a message for a spam score and returns an object of information.* 
